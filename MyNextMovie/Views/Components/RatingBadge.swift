@@ -22,7 +22,9 @@ struct RatingBadge: View {
 }
 
 #Preview {
-    RatingBadge(movie: sampleMovies[0])
-        .padding()
-        .background(.gray)
+    PopularMoviesPreview { movies in
+        RatingBadge(movie: movies[0])
+            .padding()
+            .background(.gray)
+    }
 }

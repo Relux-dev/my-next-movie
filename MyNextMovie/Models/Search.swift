@@ -3,19 +3,22 @@ import Foundation
 /// Movies whose title or overview contains the query and which have the genre.
 /// Case and diacritics are ignored. An empty query or `noGenreId` matches every movie.
 func filterMovies(_ movies: [Movie], query: String, genreId: Int) -> [Movie] {
-    // TODO: Lab 2, task 1. Trim the spaces around `query` first
-    // (`query.trimmingCharacters(in: .whitespaces)`). Then go through `movies` with a `for` loop
-    // and keep a movie only when both hold:
-    // - `genreId` is `noGenreId`, or `movie.genreIds` contains `genreId`,
-    // - the trimmed query is empty, or `movieContainsText(movie, trimmedQuery)`.
-    // Skip a movie with `continue` instead of nesting one `if` in another.
-    return []
+    let trimmedQuery = query.trimmingCharacters(in: .whitespaces)
+    var matchingMovies: [Movie] = []
+    for movie in movies {
+        if genreId != noGenreId && !movie.genreIds.contains(genreId) {
+            continue
+        }
+        if !trimmedQuery.isEmpty && !movieContainsText(movie, trimmedQuery) {
+            continue
+        }
+        matchingMovies.append(movie)
+    }
+    return matchingMovies
 }
 
 private func movieContainsText(_ movie: Movie, _ searchedText: String) -> Bool {
-    // TODO: Lab 2, task 1. True when `textContains` finds `searchedText`
-    // in `movie.title` or in `movie.overview`.
-    return false
+    return textContains(movie.title, searchedText) || textContains(movie.overview, searchedText)
 }
 
 /// Whether `fullText` contains `searchedText`, ignoring case and diacritics.

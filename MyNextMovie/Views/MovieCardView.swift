@@ -9,23 +9,41 @@ private let cardTextMaxLines = 1
 struct MovieCardView: View {
     let movie: Movie
 
-    // TODO: Lab 1, task 1. Build the card:
-    // - a `VStack(alignment: .leading, spacing: spacingSmall)` with `poster` and `caption`,
-    // - `poster`: `PosterView(movie:)` with `RatingBadge(movie:)` in its top trailing corner
-    //   (`.overlay(alignment: .topTrailing)`, `.padding(spacingSmall)`) and a `.shadow`
-    //   made of `cardShadowColor`, `cardShadowRadius` and `cardShadowOffset`,
-    // - `caption`: a `VStack(alignment: .leading, spacing: spacingTiny)` with
-    //   `Text(movie.title)` in `.subheadline.weight(.semibold)` and
-    //   `Text(movieSubtitle(movie))` in `.caption`, `.secondary`.
-    //   Both texts get `.lineLimit(cardTextMaxLines)`.
-    // Split the body into computed properties, as in `MovieDetailView`.
     var body: some View {
-        Text(movie.title)
+        VStack(alignment: .leading, spacing: spacingSmall) {
+            poster
+            caption
+        }
+    }
+
+    private var poster: some View {
+        PosterView(movie: movie)
+            .overlay(alignment: .topTrailing) { ratingBadge }
+            .shadow(color: cardShadowColor, radius: cardShadowRadius, y: cardShadowOffset)
+    }
+
+    private var ratingBadge: some View {
+        RatingBadge(movie: movie)
+            .padding(spacingSmall)
+    }
+
+    private var caption: some View {
+        VStack(alignment: .leading, spacing: spacingTiny) {
+            Text(movie.title)
+                .font(.subheadline.weight(.semibold))
+                .lineLimit(cardTextMaxLines)
+            Text(movieSubtitle(movie))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .lineLimit(cardTextMaxLines)
+        }
     }
 }
 
 #Preview {
-    MovieCardView(movie: sampleMovies[0])
-        .frame(width: 170)
-        .padding()
+    PopularMoviesPreview { movies in
+        MovieCardView(movie: movies[0])
+            .frame(width: 170)
+            .padding()
+    }
 }

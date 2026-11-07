@@ -9,9 +9,11 @@ private let searchInputKeySeparator = "|"
 
 struct SearchView: View {
     @State private var viewModel: SearchViewModel
+    private let loadDetails: MovieDetailsLoader
 
-    init(viewModel: SearchViewModel) {
+    init(viewModel: SearchViewModel, loadDetails: @escaping MovieDetailsLoader) {
         _viewModel = State(initialValue: viewModel)
+        self.loadDetails = loadDetails
     }
 
     var body: some View {
@@ -22,11 +24,15 @@ struct SearchView: View {
             }
             .navigationTitle("Search")
             .searchable(text: $viewModel.query, prompt: "Title or keyword")
-            .navigationDestination(for: Movie.self) { movie in MovieDetailView(movie: movie) }
+            .navigationDestination(for: Movie.self, destination: movieDetail)
             .task(id: searchInputKey(viewModel.query, viewModel.selectedGenreId)) {
                 await searchAfterPause()
             }
         }
+    }
+
+    private func movieDetail(_ movie: Movie) -> some View {
+        MovieDetailView(movie: movie, loadDetails: loadDetails)
     }
 
     private var genreFilter: some View {
@@ -74,20 +80,29 @@ private struct GenreFilter: View {
     let selectedGenreId: Int
     let toggleGenre: (Int) -> Void
 
-    // TODO: Lab 2, task 2. Like `GenreRow` in `MovieDetailView`:
-    // a `ScrollView(.horizontal, showsIndicators: false)` with an `HStack(spacing: spacingSmall)`
-    // and `ForEach(genreTable)` inside. `Genre` is `Identifiable`, so no `id:` is needed.
-    // Give the `HStack` `.padding(.horizontal)` and `.padding(.vertical, spacingSmall)`.
-    // Draw every chip with `genreFilterChip(genre.id)`.
     var body: some View {
-        EmptyView()
+        ScrollView(.horizontal, showsIndicators: false) {
+            chips
+        }
     }
 
-    // TODO: Lab 2, task 2. A `Button` that calls `toggleGenre(genreId)`, with
-    // `GenreChip(genreId:isSelected:)` as its label. The chip is selected when
-    // `genreId == selectedGenreId`. Add `.buttonStyle(.plain)`.
+    private var chips: some View {
+        HStack(spacing: spacingSmall) {
+            ForEach(genreTable) { genre in
+                genreFilterChip(genre.id)
+            }
+        }
+        .padding(.horizontal)
+        .padding(.vertical, spacingSmall)
+    }
+
     private func genreFilterChip(_ genreId: Int) -> some View {
-        GenreChip(genreId: genreId)
+        Button {
+            toggleGenre(genreId)
+        } label: {
+            GenreChip(genreId: genreId, isSelected: genreId == selectedGenreId)
+        }
+        .buttonStyle(.plain)
     }
 }
 
@@ -96,11 +111,16 @@ private struct SearchResults: View {
     let movies: [Movie]
     let query: String
 
-    // TODO: Lab 2, task 2. When `movies` is empty, show `ContentUnavailableView.search(text: query)`.
-    // Otherwise a `List(movies)` with a `SearchResultRow` for every movie and `.listStyle(.plain)`.
-    // An `if` in `body` needs `@ViewBuilder`, as `content` in `SearchView` has.
+    @ViewBuilder
     var body: some View {
-        Text("\(movies.count) movies, build the list here")
+        if movies.isEmpty {
+            ContentUnavailableView.search(text: query)
+        } else {
+            List(movies) { movie in
+                SearchResultRow(movie: movie)
+            }
+            .listStyle(.plain)
+        }
     }
 }
 
@@ -109,19 +129,39 @@ private struct SearchResults: View {
 private struct SearchResultRow: View {
     let movie: Movie
 
-    // TODO: Lab 2, task 2. A `NavigationLink(value: movie)` with an `HStack(spacing: spacingMedium)`
-    // of `thumbnail` and `details`, and `.padding(.vertical, spacingExtraSmall)` on the `HStack`.
-    // - `thumbnail`: `PosterView(movie:cornerRadius:)` with `thumbnailCornerRadius`,
-    //   `.frame(width: searchResultThumbnailWidth)`,
-    // - `details`: a `VStack(alignment: .leading, spacing: spacingExtraSmall)` with
-    //   `Text(movie.title)` in `.headline` limited to `searchResultTitleMaxLines`,
-    //   `Text(movieSubtitle(movie))` in `.subheadline` and `Text(ratingWithStar(movie))`
-    //   in `.caption`. Both last texts are `.secondary`.
     var body: some View {
-        Text(movie.title)
+        NavigationLink(value: movie) {
+            HStack(spacing: spacingMedium) {
+                thumbnail
+                details
+            }
+            .padding(.vertical, spacingExtraSmall)
+        }
+    }
+
+    private var thumbnail: some View {
+        PosterView(movie: movie, cornerRadius: thumbnailCornerRadius)
+            .frame(width: searchResultThumbnailWidth)
+    }
+
+    private var details: some View {
+        VStack(alignment: .leading, spacing: spacingExtraSmall) {
+            Text(movie.title)
+                .font(.headline)
+                .lineLimit(searchResultTitleMaxLines)
+            Text(movieSubtitle(movie))
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            Text(ratingWithStar(movie))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
     }
 }
 
 #Preview {
-    SearchView(viewModel: SearchViewModel(searchMovies: searchSampleMovies))
+    SearchView(
+        viewModel: SearchViewModel(searchMovies: searchTMDBMovies),
+        loadDetails: fetchMovieDetails
+    )
 }

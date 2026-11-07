@@ -2,20 +2,31 @@ import SwiftUI
 
 private let gridMinimumColumnWidth: CGFloat = 150
 
+/// Gray cards shown while the real movies load.
+private let placeholderMovieCount = 6
+/// `.redacted` draws text as a gray bar, so only the length of the title matters.
+private let placeholderMovieTitle = "Movie title"
+
 struct MovieListView: View {
     @State private var viewModel: MovieListViewModel
+    private let loadDetails: MovieDetailsLoader
 
-    init(viewModel: MovieListViewModel) {
+    init(viewModel: MovieListViewModel, loadDetails: @escaping MovieDetailsLoader) {
         _viewModel = State(initialValue: viewModel)
+        self.loadDetails = loadDetails
     }
 
     var body: some View {
         NavigationStack {
             content
                 .navigationTitle("My Next Movie")
-                .navigationDestination(for: Movie.self) { movie in MovieDetailView(movie: movie) }
+                .navigationDestination(for: Movie.self, destination: movieDetail)
         }
         .task { await viewModel.loadIfNeeded() }
+    }
+
+    private func movieDetail(_ movie: Movie) -> some View {
+        MovieDetailView(movie: movie, loadDetails: loadDetails)
     }
 
     @ViewBuilder
@@ -32,9 +43,9 @@ struct MovieListView: View {
         }
     }
 
-    /// Sample movies drawn as gray shapes while the real ones load.
+    /// Empty movies drawn as gray shapes while the real ones load.
     private var loadingGrid: some View {
-        MovieGrid(title: "Popular", movies: sampleMovies)
+        MovieGrid(title: "Popular", movies: makePlaceholderMovies())
             .redacted(reason: .placeholder)
             .allowsHitTesting(false)
     }
@@ -64,13 +75,15 @@ private struct MovieGrid: View {
         }
     }
 
-    // TODO: Lab 1, task 1. Replace the text with a `LazyVGrid`:
-    // - columns: one `GridItem(.adaptive(minimum: gridMinimumColumnWidth), spacing: spacingLarge)`,
-    //   so the grid fits as many columns as the screen width allows,
-    // - row spacing: `spacingExtraLarge`,
-    // - content: `ForEach(movies)` with a `MovieGridItem` for every movie.
     private var grid: some View {
-        Text("\(movies.count) movies, build the grid here")
+        LazyVGrid(
+            columns: [GridItem(.adaptive(minimum: gridMinimumColumnWidth), spacing: spacingLarge)],
+            spacing: spacingExtraLarge
+        ) {
+            ForEach(movies) { movie in
+                MovieGridItem(movie: movie)
+            }
+        }
     }
 }
 
@@ -78,15 +91,35 @@ private struct MovieGrid: View {
 private struct MovieGridItem: View {
     let movie: Movie
 
-    // TODO: Lab 1, task 1. Wrap the card in `NavigationLink(value: movie)`.
-    // `MovieListView` already turns the value into a `MovieDetailView`
-    // with `.navigationDestination(for: Movie.self)`.
-    // Add `.buttonStyle(.plain)`, otherwise the whole card turns blue.
     var body: some View {
-        MovieCardView(movie: movie)
+        NavigationLink(value: movie) {
+            MovieCardView(movie: movie)
+        }
+        .buttonStyle(.plain)
     }
 }
 
+/// Movies with consecutive ids and a title, the rest empty.
+private func makePlaceholderMovies() -> [Movie] {
+    var placeholderMovies: [Movie] = []
+    for movieId in 1...placeholderMovieCount {
+        let placeholderMovie = Movie(
+            id: movieId,
+            title: placeholderMovieTitle,
+            overview: "",
+            releaseDate: "",
+            posterPath: nil,
+            voteAverage: 0,
+            genreIds: []
+        )
+        placeholderMovies.append(placeholderMovie)
+    }
+    return placeholderMovies
+}
+
 #Preview {
-    MovieListView(viewModel: MovieListViewModel(loadMovies: loadSampleMovies))
+    MovieListView(
+        viewModel: MovieListViewModel(loadMovies: fetchPopularMovies),
+        loadDetails: fetchMovieDetails
+    )
 }

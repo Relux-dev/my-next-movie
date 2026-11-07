@@ -90,6 +90,8 @@ private struct PosterArt: View {
 }
 
 #Preview {
-    PosterView(movie: sampleMovies[0])
-        .frame(width: 180)
+    PopularMoviesPreview { movies in
+        PosterView(movie: movies[0])
+            .frame(width: 180)
+    }
 }
